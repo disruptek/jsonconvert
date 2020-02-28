@@ -1,20 +1,21 @@
-import json
-import strutils
+import std/json
+import std/strutils
 
 proc toAnything[T: enum|string|float|int|bool](node: JsonNode): T =
   when T is int:
-    result = cast[T](node.getInt)
+    result = node.getInt
   when T is string:
-    result = cast[T](node.getStr)
+    result = node.getStr
   when T is bool:
-    result = cast[T](node.getBool)
+    result = node.getBool
   when T is float:
-    result = cast[T](node.getFloat)
+    result = node.getFloat
   when T is enum:
     assert node == nil or node.kind == JString
     result = parseEnum[T](node.getStr)
 
-proc get*[T: enum|string|float|int|bool](node: JsonNode; name: string; default: T): T =
+proc get*[T: enum|string|float|int|bool](node: JsonNode;
+                                         name: string; default: T): T =
   let js = node.getOrDefault(name)
   if js == nil:
     result = default
