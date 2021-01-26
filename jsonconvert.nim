@@ -1,6 +1,8 @@
 import std/json
 import std/strutils
 
+import grok
+
 proc toAnything[T: enum|string|float|int|bool](node: JsonNode): T =
   when T is int:
     result = node.getInt
@@ -11,8 +13,21 @@ proc toAnything[T: enum|string|float|int|bool](node: JsonNode): T =
   when T is float:
     result = node.getFloat
   when T is enum:
-    assert node == nil or node.kind == JString
-    result = parseEnum[T](node.getStr)
+    const
+      validInts = enumValuesAsSetOfOrds T
+    if node == nil:
+      result = default T
+    else:
+      case node.kind
+      of JInt:
+        let i = node.getInt
+        if i notin validInts:
+          raise newException ValueError:
+            $T & " has no enum field for " & $i
+        else:
+          result = T(i)
+      else:
+        result = parseEnum[T](node.getStr)
 
 proc get*[T: enum|string|float|int|bool](node: JsonNode;
                                          name: string; default: T): T =
@@ -22,7 +37,9 @@ proc get*[T: enum|string|float|int|bool](node: JsonNode;
   else:
     result = toAnything[T](js)
 
-if isMainModule:
+when isMainModule:
+  import balls
+
   type Foo = enum One, Two
   let foo = %* {
     "1": "One",
@@ -33,20 +50,25 @@ if isMainModule:
     "null": nil,
     "bool": true,
   }
-  assert foo.get("1", Two) == One
-  assert foo.get("2", One) == Two
-  assert foo.get("3", Two) == Two
-  assert foo.get("3", One) == One
-  assert foo.get("int", 99) == 45
-  assert foo.get("flint", 99) == 99
-  assert foo.get("flat", 22.0) == 22.0
-  assert foo.get("float", 22.0) == 34.0
-  assert foo.get("string", "") == "hello, world"
-  assert foo.get("nah", "dummy") == "dummy"
-  assert foo.get("bool", false) == true
-  assert foo.get("bill", false) == false
-  try:
-    discard foo.get("int", Two)
-    assert false, "dainbramaged json conversion"
-  except:
-    discard
+
+  suite "don't use jsonconvert, nimlets":
+
+    block:
+      ## get with default
+      check foo.get("1", Two) == One
+      check foo.get("2", One) == Two
+      check foo.get("3", Two) == Two
+      check foo.get("3", One) == One
+      check foo.get("int", 99) == 45
+      check foo.get("flint", 99) == 99
+      check foo.get("flat", 22.0) == 22.0
+      check foo.get("float", 22.0) == 34.0
+      check foo.get("string", "") == "hello, world"
+      check foo.get("nah", "dummy") == "dummy"
+      check foo.get("bool", false) == true
+      check foo.get("bill", false) == false
+
+    block:
+      ## improper conversion
+      expect ValueError:
+        discard foo.get("int", Two)
