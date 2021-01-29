@@ -6,7 +6,7 @@ license = "MIT"
 requires "https://github.com/disruptek/grok >= 0.4.0 & < 1.0.0"
 
 when not defined(release):
-  requires "https://github.com/disruptek/balls >= 2.0.0 & < 3.0.0"
+  requires "https://github.com/disruptek/balls#rc"
 
 task test, "run the unit tests":
   when defined(windows):
